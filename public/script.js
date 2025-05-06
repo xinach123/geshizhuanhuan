@@ -10,10 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const preview = document.getElementById('preview');
     const progress = document.querySelector('.progress');
     const downloadSection = document.querySelector('.download-section');
+    const statusDiv = document.getElementById('status');
 
     let selectedFiles = [];
-
-    // 创建 FFmpeg 实例
     let ffmpeg = null;
 
     // 初始化 FFmpeg
@@ -42,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'gif':
                     command = [
                         '-i', inputFileName,
-                        '-vf', 'fps=10,scale=320:-1:flags=lanczos',
+                        '-vf', `fps=10,scale=${scale.value}%:-1:flags=lanczos`,
                         '-f', 'gif',
                         outputFileName
                     ];
@@ -53,7 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         '-c:v', 'libx264',
                         '-c:a', 'aac',
                         '-preset', 'medium',
-                        '-crf', '23',
+                        '-crf', `${Math.floor((100 - quality.value) / 2)}`,
+                        '-vf', `scale=${scale.value}%:-1`,
                         outputFileName
                     ];
                     break;
@@ -62,8 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         '-i', inputFileName,
                         '-c:v', 'libvpx-vp9',
                         '-c:a', 'libopus',
-                        '-crf', '30',
+                        '-crf', `${Math.floor((100 - quality.value) / 2)}`,
                         '-b:v', '0',
+                        '-vf', `scale=${scale.value}%:-1`,
                         outputFileName
                     ];
                     break;
@@ -79,12 +80,14 @@ document.addEventListener('DOMContentLoaded', () => {
             ffmpeg.FS('unlink', outputFileName);
 
             // 创建下载链接
-            const blob = new Blob([data.buffer], { type: `video/${format}` });
+            const blob = new Blob([data.buffer], { type: getMimeType(outputFileName) });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
+            a.className = 'download-btn';
+            a.textContent = `下载 ${outputFileName}`;
             a.download = outputFileName;
-            a.click();
+            downloadSection.appendChild(a);
             URL.revokeObjectURL(url);
 
             return true;
@@ -131,8 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function handleFiles(files) {
-        console.log('处理文件:', files); // 调试日志
-
         // 限制文件数量为10个
         if (files.length > 10) {
             alert('一次最多只能上传10个文件！');
@@ -141,9 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 过滤文件类型
         const validFiles = files.filter(file => {
-            const isValid = file.type.match('video/.*') || file.type.match('image/gif');
-            console.log('文件类型检查:', file.name, file.type, isValid); // 调试日志
-            return isValid;
+            return file.type.match('video/.*') || file.type.match('image/gif');
         });
 
         if (validFiles.length === 0) {
@@ -152,11 +151,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         selectedFiles = validFiles;
-        console.log('已选择文件:', selectedFiles); // 调试日志
 
         // 启用转换按钮
         convertBtn.disabled = false;
-        console.log('转换按钮状态:', convertBtn.disabled); // 调试日志
 
         // 显示文件列表
         preview.innerHTML = '<h3>已选择的文件：</h3>';
@@ -179,27 +176,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 处理转换按钮点击
     convertBtn.addEventListener('click', async function() {
-        const files = document.getElementById('fileInput').files;
-        const format = document.getElementById('outputFormat').value;
-        const convertBtn = document.getElementById('convertBtn');
-        const statusDiv = document.getElementById('status');
-
-        if (files.length === 0) {
+        if (selectedFiles.length === 0) {
             alert('请选择文件');
             return;
         }
 
         try {
             convertBtn.disabled = true;
+            progress.style.width = '0%';
+            downloadSection.innerHTML = '';
             statusDiv.textContent = '正在转换...';
 
-            for (let file of files) {
+            const totalFiles = selectedFiles.length;
+            let completedFiles = 0;
+
+            for (let file of selectedFiles) {
                 statusDiv.textContent = `正在转换 ${file.name}...`;
-                await convertFile(file, format);
+                await convertFile(file, outputFormat.value);
+                completedFiles++;
+                progress.style.width = `${(completedFiles / totalFiles) * 100}%`;
             }
 
             statusDiv.textContent = '转换完成！';
         } catch (error) {
+            console.error('转换错误:', error);
             statusDiv.textContent = `转换失败: ${error.message}`;
         } finally {
             convertBtn.disabled = false;
