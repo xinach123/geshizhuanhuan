@@ -4,7 +4,8 @@
   "description": "视频格式转换工具",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "vercel-build": "echo 'Building...'"
   },
   "dependencies": {
     "express": "^4.17.1",
