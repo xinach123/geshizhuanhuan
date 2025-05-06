@@ -25,6 +25,11 @@ app.use((req, res, next) => {
     next();
 });
 
+// 根路由
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // 错误处理中间件
 app.use((err, req, res, next) => {
     console.error('Error:', err);
@@ -139,6 +144,11 @@ app.post('/convert-batch', upload.array('files', 10), async (req, res) => {
 // 健康检查端点
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
+});
+
+// 处理所有其他路由
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // 导出 app 而不是直接启动服务器
