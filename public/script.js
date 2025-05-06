@@ -58,11 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 过滤文件类型
         const validFiles = files.filter(file => 
-            file.type.match('video/mp4') || file.type.match('image/gif')
+            file.type.match('video/.*') || file.type.match('image/gif')
         );
 
         if (validFiles.length === 0) {
-            alert('请选择MP4或GIF文件！');
+            alert('请选择视频或GIF文件！');
             return;
         }
 
@@ -109,7 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: formData
             });
 
-            if (!response.ok) throw new Error('转换失败');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '转换失败');
+            }
 
             const result = await response.json();
             
@@ -118,22 +121,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 errorList.className = 'error-list';
                 errorList.innerHTML = '<h3>转换失败的文件：</h3><ul>';
                 result.errors.forEach(error => {
-                    errorList.innerHTML += `<li>${error.name}: ${error.error}</li>`;
+                    errorList.innerHTML += `<li>${error.fileName}: ${error.error}</li>`;
                 });
                 errorList.innerHTML += '</ul>';
                 downloadSection.appendChild(errorList);
             }
 
-            if (result.files && result.files.length > 0) {
+            if (result.results && result.results.length > 0) {
                 const successList = document.createElement('div');
                 successList.className = 'success-list';
                 successList.innerHTML = '<h3>转换成功的文件：</h3>';
-                result.files.forEach(file => {
+                result.results.forEach(file => {
                     const link = document.createElement('a');
-                    link.href = file.downloadUrl;
+                    link.href = `data:${getMimeType(file.convertedName)};base64,${file.data}`;
                     link.className = 'download-btn';
-                    link.textContent = `下载 ${file.name}`;
-                    link.download = file.name;
+                    link.textContent = `下载 ${file.convertedName}`;
+                    link.download = file.convertedName;
                     successList.appendChild(link);
                 });
                 downloadSection.appendChild(successList);
@@ -146,4 +149,14 @@ document.addEventListener('DOMContentLoaded', () => {
             convertBtn.disabled = false;
         }
     });
+
+    function getMimeType(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const mimeTypes = {
+            'gif': 'image/gif',
+            'mp4': 'video/mp4',
+            'webm': 'video/webm'
+        };
+        return mimeTypes[ext] || 'application/octet-stream';
+    }
 }); 

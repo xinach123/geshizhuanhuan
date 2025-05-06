@@ -11,7 +11,7 @@
         <h1>视频格式转换工具</h1>
         <div class="converter-box">
             <div class="upload-section">
-                <input type="file" id="fileInput" accept=".mp4,.gif" multiple />
+                <input type="file" id="fileInput" accept="video/*,.gif" multiple />
                 <div class="drop-zone">
                     <p>拖拽文件到这里或点击选择文件（最多10个文件）</p>
                 </div>
@@ -29,8 +29,8 @@
                 
                 <div class="option-group">
                     <label for="quality">质量：</label>
-                    <input type="range" id="quality" min="1" max="100" value="80">
-                    <span id="qualityValue">80%</span>
+                    <input type="range" id="quality" min="1" max="100" value="100">
+                    <span id="qualityValue">100%</span>
                 </div>
                 
                 <div class="option-group">
