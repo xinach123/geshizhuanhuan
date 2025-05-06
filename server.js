@@ -15,7 +15,7 @@ const upload = multer({
 });
 
 // 静态文件服务
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 添加安全头部
 app.use((req, res, next) => {
