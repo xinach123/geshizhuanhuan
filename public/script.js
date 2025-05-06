@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function handleFiles(files) {
+        console.log('处理文件:', files); // 调试日志
+
         // 限制文件数量为10个
         if (files.length > 10) {
             alert('一次最多只能上传10个文件！');
@@ -57,9 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 过滤文件类型
-        const validFiles = files.filter(file => 
-            file.type.match('video/.*') || file.type.match('image/gif')
-        );
+        const validFiles = files.filter(file => {
+            const isValid = file.type.match('video/.*') || file.type.match('image/gif');
+            console.log('文件类型检查:', file.name, file.type, isValid); // 调试日志
+            return isValid;
+        });
 
         if (validFiles.length === 0) {
             alert('请选择视频或GIF文件！');
@@ -67,7 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         selectedFiles = validFiles;
+        console.log('已选择文件:', selectedFiles); // 调试日志
+
+        // 启用转换按钮
         convertBtn.disabled = false;
+        console.log('转换按钮状态:', convertBtn.disabled); // 调试日志
 
         // 显示文件列表
         preview.innerHTML = '<h3>已选择的文件：</h3>';
@@ -89,7 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     convertBtn.addEventListener('click', async () => {
-        if (selectedFiles.length === 0) return;
+        console.log('点击转换按钮'); // 调试日志
+        if (selectedFiles.length === 0) {
+            console.log('没有选择文件'); // 调试日志
+            return;
+        }
 
         convertBtn.disabled = true;
         progress.style.width = '0%';
@@ -104,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('quality', quality.value);
             formData.append('scale', scale.value);
 
+            console.log('发送转换请求'); // 调试日志
             const response = await fetch('/convert-batch', {
                 method: 'POST',
                 body: formData
@@ -115,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const result = await response.json();
+            console.log('转换结果:', result); // 调试日志
             
             if (result.errors && result.errors.length > 0) {
                 const errorList = document.createElement('div');
@@ -144,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             progress.style.width = '100%';
         } catch (error) {
+            console.error('转换错误:', error); // 调试日志
             alert('转换过程中发生错误：' + error.message);
         } finally {
             convertBtn.disabled = false;
