@@ -9,16 +9,16 @@
   "routes": [
     {
       "src": "/health",
-      "dest": "server.js"
+      "dest": "/server.js"
     },
     {
       "src": "/convert-batch",
-      "dest": "server.js",
+      "dest": "/server.js",
       "methods": ["POST"]
     },
     {
       "src": "/(.*)",
-      "dest": "server.js"
+      "dest": "/server.js"
     }
   ],
   "env": {

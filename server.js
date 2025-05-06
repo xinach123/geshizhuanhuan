@@ -1,32 +1,12 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const app = express();
 const port = process.env.PORT || 3001;
 
-// 确保目录存在
-const uploadsDir = path.join(__dirname, 'uploads');
-const downloadsDir = path.join(__dirname, 'downloads');
-
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
-if (!fs.existsSync(downloadsDir)) {
-    fs.mkdirSync(downloadsDir, { recursive: true });
-}
-
-// 配置文件上传
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir);
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
-    }
-});
-
+// 配置内存存储
+const storage = multer.memoryStorage();
 const upload = multer({ 
     storage: storage,
     limits: {
@@ -36,7 +16,6 @@ const upload = multer({
 
 // 静态文件服务
 app.use(express.static('public'));
-app.use('/downloads', express.static('downloads'));
 
 // 添加安全头部
 app.use((req, res, next) => {
@@ -65,16 +44,21 @@ app.post('/convert-batch', upload.array('files', 10), async (req, res) => {
 
         for (const file of req.files) {
             try {
-                const inputPath = file.path;
-                const outputFileName = `${Date.now()}-${path.parse(file.originalname).name}.${format}`;
-                const outputPath = path.join(downloadsDir, outputFileName);
+                console.log(`Processing ${file.originalname} to ${format}`);
 
-                console.log(`Converting ${file.originalname} to ${format}`);
-                console.log(`Input path: ${inputPath}`);
-                console.log(`Output path: ${outputPath}`);
+                // 使用内存中的文件数据
+                const inputBuffer = file.buffer;
+                const outputFileName = `${Date.now()}-${path.parse(file.originalname).name}.${format}`;
+
+                // 创建临时文件路径
+                const tempInputPath = `/tmp/${file.originalname}`;
+                const tempOutputPath = `/tmp/${outputFileName}`;
+
+                // 写入临时文件
+                require('fs').writeFileSync(tempInputPath, inputBuffer);
 
                 await new Promise((resolve, reject) => {
-                    let command = ffmpeg(inputPath);
+                    let command = ffmpeg(tempInputPath);
 
                     switch (format) {
                         case 'gif':
@@ -111,17 +95,21 @@ app.post('/convert-batch', upload.array('files', 10), async (req, res) => {
                             console.log('Conversion completed');
                             resolve();
                         })
-                        .save(outputPath);
+                        .save(tempOutputPath);
                 });
 
+                // 读取转换后的文件
+                const outputBuffer = require('fs').readFileSync(tempOutputPath);
+
+                // 清理临时文件
+                require('fs').unlinkSync(tempInputPath);
+                require('fs').unlinkSync(tempOutputPath);
+
+                // 将转换后的文件作为 base64 返回
                 results.push({
                     originalName: file.originalname,
-                    downloadUrl: `/downloads/${outputFileName}`
-                });
-
-                // 清理上传的文件
-                fs.unlink(inputPath, (err) => {
-                    if (err) console.error('Error deleting input file:', err);
+                    convertedName: outputFileName,
+                    data: outputBuffer.toString('base64')
                 });
 
             } catch (err) {
@@ -153,9 +141,5 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-// 启动服务器
-app.listen(port, '0.0.0.0', () => {
-    console.log(`Server is running on port ${port}`);
-    console.log(`Upload directory: ${uploadsDir}`);
-    console.log(`Download directory: ${downloadsDir}`);
-}); 
+// 导出 app 而不是直接启动服务器
+module.exports = app; 
