@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const qualityValue = document.getElementById('qualityValue');
     const scaleValue = document.getElementById('scaleValue');
     const preview = document.getElementById('preview');
-    const progress = document.querySelector('.progress');
+    const progress = document.getElementById('progress');
     const downloadSection = document.querySelector('.download-section');
     const statusDiv = document.getElementById('status');
 
