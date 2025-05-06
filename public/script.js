@@ -13,6 +13,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let selectedFiles = [];
 
+    // 创建 FFmpeg 实例
+    let ffmpeg = null;
+
+    // 初始化 FFmpeg
+    async function initFFmpeg() {
+        if (!ffmpeg) {
+            const { createFFmpeg, fetchFile } = FFmpeg;
+            ffmpeg = createFFmpeg({ log: true });
+            await ffmpeg.load();
+        }
+        return ffmpeg;
+    }
+
+    // 转换文件
+    async function convertFile(file, format) {
+        try {
+            const ffmpeg = await initFFmpeg();
+            const inputFileName = file.name;
+            const outputFileName = `${Date.now()}-${file.name.split('.')[0]}.${format}`;
+
+            // 写入文件到 FFmpeg 虚拟文件系统
+            ffmpeg.FS('writeFile', inputFileName, await fetchFile(file));
+
+            // 执行转换
+            let command = [];
+            switch (format) {
+                case 'gif':
+                    command = [
+                        '-i', inputFileName,
+                        '-vf', 'fps=10,scale=320:-1:flags=lanczos',
+                        '-f', 'gif',
+                        outputFileName
+                    ];
+                    break;
+                case 'mp4':
+                    command = [
+                        '-i', inputFileName,
+                        '-c:v', 'libx264',
+                        '-c:a', 'aac',
+                        '-preset', 'medium',
+                        '-crf', '23',
+                        outputFileName
+                    ];
+                    break;
+                case 'webm':
+                    command = [
+                        '-i', inputFileName,
+                        '-c:v', 'libvpx-vp9',
+                        '-c:a', 'libopus',
+                        '-crf', '30',
+                        '-b:v', '0',
+                        outputFileName
+                    ];
+                    break;
+            }
+
+            await ffmpeg.run(...command);
+
+            // 读取转换后的文件
+            const data = ffmpeg.FS('readFile', outputFileName);
+
+            // 清理文件
+            ffmpeg.FS('unlink', inputFileName);
+            ffmpeg.FS('unlink', outputFileName);
+
+            // 创建下载链接
+            const blob = new Blob([data.buffer], { type: `video/${format}` });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = outputFileName;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            return true;
+        } catch (error) {
+            console.error('转换错误:', error);
+            throw error;
+        }
+    }
+
     // 更新滑块值显示
     quality.addEventListener('input', () => {
         qualityValue.textContent = `${quality.value}%`;
@@ -96,70 +177,30 @@ document.addEventListener('DOMContentLoaded', () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    convertBtn.addEventListener('click', async () => {
-        console.log('点击转换按钮'); // 调试日志
-        if (selectedFiles.length === 0) {
-            console.log('没有选择文件'); // 调试日志
+    // 处理转换按钮点击
+    convertBtn.addEventListener('click', async function() {
+        const files = document.getElementById('fileInput').files;
+        const format = document.getElementById('outputFormat').value;
+        const convertBtn = document.getElementById('convertBtn');
+        const statusDiv = document.getElementById('status');
+
+        if (files.length === 0) {
+            alert('请选择文件');
             return;
         }
 
-        convertBtn.disabled = true;
-        progress.style.width = '0%';
-        downloadSection.innerHTML = '';
-
         try {
-            const formData = new FormData();
-            selectedFiles.forEach(file => {
-                formData.append('files', file);
-            });
-            formData.append('format', outputFormat.value);
-            formData.append('quality', quality.value);
-            formData.append('scale', scale.value);
+            convertBtn.disabled = true;
+            statusDiv.textContent = '正在转换...';
 
-            console.log('发送转换请求'); // 调试日志
-            const response = await fetch('/convert-batch', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '转换失败');
+            for (let file of files) {
+                statusDiv.textContent = `正在转换 ${file.name}...`;
+                await convertFile(file, format);
             }
 
-            const result = await response.json();
-            console.log('转换结果:', result); // 调试日志
-            
-            if (result.errors && result.errors.length > 0) {
-                const errorList = document.createElement('div');
-                errorList.className = 'error-list';
-                errorList.innerHTML = '<h3>转换失败的文件：</h3><ul>';
-                result.errors.forEach(error => {
-                    errorList.innerHTML += `<li>${error.fileName}: ${error.error}</li>`;
-                });
-                errorList.innerHTML += '</ul>';
-                downloadSection.appendChild(errorList);
-            }
-
-            if (result.results && result.results.length > 0) {
-                const successList = document.createElement('div');
-                successList.className = 'success-list';
-                successList.innerHTML = '<h3>转换成功的文件：</h3>';
-                result.results.forEach(file => {
-                    const link = document.createElement('a');
-                    link.href = `data:${getMimeType(file.convertedName)};base64,${file.data}`;
-                    link.className = 'download-btn';
-                    link.textContent = `下载 ${file.convertedName}`;
-                    link.download = file.convertedName;
-                    successList.appendChild(link);
-                });
-                downloadSection.appendChild(successList);
-            }
-            
-            progress.style.width = '100%';
+            statusDiv.textContent = '转换完成！';
         } catch (error) {
-            console.error('转换错误:', error); // 调试日志
-            alert('转换过程中发生错误：' + error.message);
+            statusDiv.textContent = `转换失败: ${error.message}`;
         } finally {
             convertBtn.disabled = false;
         }
