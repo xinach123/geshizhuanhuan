@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频格式转换工具</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>视频格式转换工具</h1>
+        <div class="converter-box">
+            <div class="upload-section">
+                <input type="file" id="fileInput" accept=".mp4,.gif" multiple />
+                <div class="drop-zone">
+                    <p>拖拽文件到这里或点击选择文件（最多10个文件）</p>
+                </div>
+            </div>
+            
+            <div class="conversion-options">
+                <div class="option-group">
+                    <label for="outputFormat">输出格式：</label>
+                    <select id="outputFormat">
+                        <option value="gif">GIF</option>
+                        <option value="mp4">MP4</option>
+                        <option value="webm">WebM</option>
+                    </select>
+                </div>
+                
+                <div class="option-group">
+                    <label for="quality">质量：</label>
+                    <input type="range" id="quality" min="1" max="100" value="80">
+                    <span id="qualityValue">80%</span>
+                </div>
+                
+                <div class="option-group">
+                    <label for="scale">缩放比例：</label>
+                    <input type="range" id="scale" min="10" max="100" value="100">
+                    <span id="scaleValue">100%</span>
+                </div>
+            </div>
+            
+            <button id="convertBtn" disabled>开始转换</button>
+            
+            <div class="preview-section">
+                <div id="preview"></div>
+                <div id="progress" class="progress-bar">
+                    <div class="progress"></div>
+                </div>
+            </div>
+            
+            <div class="download-section"></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
